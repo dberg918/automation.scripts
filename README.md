@@ -2,7 +2,7 @@
 Chappy is a cute little 30-line bash script that parses exported label tracks from Audacity.
 
 ## Try it!
-Clone the repository and run `./chappy.sh labels.txt` from the root directory. You should now have two files in your directory, `labels.vtt` and `labels.chapters`.
+Clone the repository and run `./chappy.sh tests/labels.txt` from the root directory. You should now have two files in your directory, `labels.vtt` and `labels.chapters`.
 
 ## What the what?
 We use this script at [Lovey Dummies][ld] to prepare chapters for our podcast. The `vtt` file is used for chapters on the 
