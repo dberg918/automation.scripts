@@ -1,0 +1,117 @@
+#!/bin/bash
+EPNUM=$1
+EPTITLE=$2
+INTERVIEWEES=$3
+
+ARTIST="Dave & Pearl"
+ALBUM="Lovey Dummies"
+YEAR=$(date +"%Y")
+COPYRIGHT="CC-BY 4.0 $YEAR David Berg & Perlan Alatiit"
+URL="http://loveydummies.com/about"
+COVER="/home/dave/Projects/podcast/ld-cover.png"
+
+LDDIR="/home/dave/Projects/websites/lovey.dummies/_posts"
+
+DATE=$(date +"%F %T %z")
+
+EP="episode-$EPNUM"
+MASTERFILE=$EP.wav
+LABELFILE=$EP.txt
+if [ ! -f "$MASTERFILE" ] || [ ! -f "$LABELFILE" ]; then
+    echo "FATAL: episode-$EPNUM.wav or episode-$EPNUM.txt not found."
+    exit
+fi
+
+OPUSFILE=$EP.opus
+M4AFILE=$EP.m4a
+M4ATEMPFILE=$EP-temp.m4a
+CHAPTERSFILE=$EP.chapters
+VTTFILE=$EP.vtt
+
+echo "CREATING AUDIO FILES"
+echo "Converting to opus..."
+opusenc --bitrate 64 \
+        --cvbr \
+        --artist "$ARTIST" \
+        --album "$ALBUM" \
+        --title "$EPTITLE" \
+        --comment TRACKNUMBER="$EPNUM" \
+        --date "$YEAR" \
+        --comment COPYRIGHT="$COPYRIGHT" \
+        --comment CONTACT="$URL" \
+        --picture "$COVER" \
+        $MASTERFILE $OPUSFILE &>/dev/null && sync
+
+echo "Converting to aac..."
+ffmpeg -i $MASTERFILE \
+       -c:a aac -strict -2 \
+       -b:a 128k \
+       $M4ATEMPFILE &>/dev/null && sync 
+
+echo "Adding chapters..."
+chappy $LABELFILE
+MP4Box -add $M4ATEMPFILE -chap $CHAPTERSFILE $M4AFILE &>/dev/null && sync
+mp4chaps --convert --chapter-qt $M4AFILE &>/dev/null && sync
+
+echo "Writing tags..."
+mp4tags -a "$ARTIST" \
+        -A "$ALBUM" \
+        -s "$EPTITLE" \
+        -t "$EPNUM" \
+        -y "$YEAR" \
+        -C "$COPYRIGHT" \
+        -c "$URL" \
+        -B 1 \
+        $M4AFILE &>/dev/null && sync
+mp4art --add $COVER $M4AFILE &>/dev/null && sync
+rm $M4ATEMPFILE
+rm $CHAPTERSFILE
+
+echo "Ready to upload? Check your files before you say yes!"
+select yn in "Yes" "No"; do
+    case $yn in
+        Yes ) 
+            aws s3 cp $M4AFILE s3://lovey-dummies/$M4AFILE;
+            aws s3 cp $OPUSFILE s3://lovey-dummies/$OPUSFILE;
+            aws s3 cp $VTTFILE s3://lovey-dummies/$VTTFILE;
+            break;;
+        No ) break;;
+    esac
+done
+
+clear
+echo "Preparing entry for website..."
+LENGTH=$(stat -c%s $M4AFILE)
+TOTALSEC=`printf %.0f $(mp4info "$M4AFILE" \
+        | grep audio \
+        | cut -f3 \
+        | cut -d ',' -f2 \
+        | cut -d ' ' -f2)`
+MIN=$(bc <<< "$TOTALSEC / 60")
+SEC=$(bc <<< "$TOTALSEC % 60")
+DURATION="$MIN:$SEC"
+
+cd $LDDIR
+POSTFILE=`echo "$(date +"%F")-$(echo $EPTITLE \
+        | sed -e 's/ /-/g' -e "s/[\!\@\#\\\$\%\^\&\*\(\)\',?]//g" \
+        | tr '[:upper:]' '[:lower:]').md"`
+> $POSTFILE
+echo "---" >> $POSTFILE
+echo "layout:    post" >> $POSTFILE
+echo "title:    \"$EPTITLE\"" >> $POSTFILE
+echo "subtitle:  $INTERVIEWEES" >> $POSTFILE
+echo "date:      $DATE" >> $POSTFILE
+echo "itunes:    $M4AFILE" >> $POSTFILE
+echo "opus:      $OPUSFILE" >> $POSTFILE
+echo "chapters:  $VTTFILE" >> $POSTFILE
+echo "length:    $LENGTH" >> $POSTFILE
+echo "duration: \"$DURATION\"" >> $POSTFILE
+echo -e "---\n\n" >> $POSTFILE
+
+read -p "Hit [ENTER] to type in the show notes"
+vim +13 $POSTFILE
+
+clear
+echo "Be sure to add, commit, and push the new show live!"
+echo "All done!"
+
