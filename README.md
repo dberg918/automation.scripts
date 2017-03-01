@@ -33,7 +33,7 @@ integrated into our M4A file so that listeners can browse chapters in apps like
 [Pocket Casts][pc] and [Overcast][oc].
 
 ### Try it!
-Clone the repository and run `./chappy.sh tests/labels.txt` from the root directory. 
+Clone the repository and run `./chappy tests/labels.txt` from the root directory. 
 You should now have two files in your directory, `labels.vtt` and 
 `labels.chapters`.
 
