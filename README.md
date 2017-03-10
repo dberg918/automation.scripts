@@ -37,6 +37,31 @@ Clone the repository and run `./chappy tests/labels.txt` from the root directory
 You should now have two files in your directory, `labels.vtt` and 
 `labels.chapters`.
 
+## lovey-stats
+`lovey-stats` is a script that pulls logfiles from an AWS S3 bucket, turns them 
+into NCSA CLF logs, and feeds them to Webalizer to generate approximate 
+download statistics. It's designed to run daily as a cron job to get yesterday's 
+stats, although you can feed it a date parameter in the terminal to get stats 
+for a particular date, month, or year. For example, `lovey-stats "2016-10-20"` 
+will generate statistics for October 20, 2016; `lovey-stats "2016-10"` will 
+generate them for the entire month of October 2016; and `lovey-stats "2016"` 
+will generate them for all of 2016.
+
+### Dependencies
+`lovey-stats` requires the following packages, all of which can be found in 
+Ubuntu 16.04's repos:
+
+    awscli webalizer
+
+### Note about using cron
+If you plan to use `cron` for generating daily statistics, keep in mind that it 
+runs in a very limited `env`. I decided to use `pip` to install the latest 
+version of `awscli`, but `pip` installed it in `/usr/local/bin`, which was not 
+in the pared-down $PATH of `cron`. Just be sure to include your desired $PATH in 
+your crontab!
+
+
+
 [ld]: http://loveydummies.com "A podcast about relationships"
 [pc]: http://www.shiftyjelly.com/android/pocketcasts
 [oc]: https://overcast.fm
