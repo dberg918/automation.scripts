@@ -1,4 +1,29 @@
 #!/bin/bash
+
+#### LAUNCH-EPISODE
+# This script takes care of a number of post-production tasks required for 
+# releasing a new episode of our podcast, Lovey Dummies. It reads in three 
+# parameters from the terminal:
+#    1. Episode number
+#    2. Episode title
+#    3. Episode subtitle (usually who we interviewed for the episode)
+#
+# The script also assumes there are two files in PWD:
+#    1. episode-#.wav (master file from Audacity)
+#    2. episode-#.txt (chapter labels exported from Audacity)
+#
+# With these pre-requisites, LAUNCH-EPISODE will encode an OPUS audio file
+# (good quality for the website) and an M4A audio file for the iTunes RSS feed,
+# both automatically tagged with the appropriate metadata and artwork. It then
+# converts the Audacity chapter labels (using the CHAPPY script) into a WebVTT
+# file for chapter support on the website, as well as a specially formatted
+# CHAPTERS file for embedding in the M4A audio file. It then offers to upload 
+# the files to AWS S3.
+#
+# Finally, it copies the WebVTT file into the appropriate directory for our
+# website, writes up the Jekyll front matter for the episode, and opens it in
+# VIM for editing. Committing and pushing from git is left to the user ;)
+
 EPNUM=$1
 EPTITLE=$2
 INTERVIEWEES=$3
