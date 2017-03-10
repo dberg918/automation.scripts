@@ -8,9 +8,9 @@ ALBUM="Lovey Dummies"
 YEAR=$(date +"%Y")
 COPYRIGHT="CC-BY 4.0 $YEAR David Berg & Perlan Alatiit"
 URL="http://loveydummies.com/about"
-COVER="/home/dave/Projects/podcast/ld-cover.png"
+COVER="/path/to/cover.png"
 
-LDDIR="/home/dave/Projects/websites/lovey.dummies/_posts"
+LDDIR="/path/to/lovey.dummies/"
 
 DATE=$(date +"%F %T %z")
 
@@ -71,15 +71,19 @@ echo "Ready to upload? Check your files before you say yes!"
 select yn in "Yes" "No"; do
     case $yn in
         Yes ) 
-            aws s3 cp $M4AFILE s3://lovey-dummies/$M4AFILE;
-            aws s3 cp $OPUSFILE s3://lovey-dummies/$OPUSFILE;
-            aws s3 cp $VTTFILE s3://lovey-dummies/$VTTFILE;
+            aws s3 cp $M4AFILE s3://lovey-dummies/$M4AFILE --acl public-read;
+            aws s3 cp $OPUSFILE s3://lovey-dummies/$OPUSFILE --acl public-read;
+            aws s3 cp $VTTFILE s3://lovey-dummies/$VTTFILE --acl public-read;
             break;;
         No ) break;;
     esac
 done
 
 clear
+cd $LDDIR
+echo "Copying VTT file..."
+cp "$VTTFILE" "chapters/$VTTFILE"
+
 echo "Preparing entry for website..."
 LENGTH=$(stat -c%s $M4AFILE)
 TOTALSEC=`printf %.0f $(mp4info "$M4AFILE" \
@@ -91,11 +95,11 @@ MIN=$(bc <<< "$TOTALSEC / 60")
 SEC=$(bc <<< "$TOTALSEC % 60")
 DURATION="$MIN:$SEC"
 
-cd $LDDIR
 POSTFILE=`echo "$(date +"%F")-$(echo $EPTITLE \
         | sed -e 's/ /-/g' -e "s/[\!\@\#\\\$\%\^\&\*\(\)\',?]//g" \
         | tr '[:upper:]' '[:lower:]').md"`
-> $POSTFILE
+
+cd _posts/episode && > $POSTFILE
 echo "---" >> $POSTFILE
 echo "layout:    post" >> $POSTFILE
 echo "title:    \"$EPTITLE\"" >> $POSTFILE
