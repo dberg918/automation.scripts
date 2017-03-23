@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #### LAUNCH-EPISODE
-# This script takes care of a number of post-production tasks required for 
-# releasing a new episode of our podcast, Lovey Dummies. It reads in three 
+# This script takes care of a number of post-production tasks required for
+# releasing a new episode of our podcast, Lovey Dummies. It reads in three
 # parameters from the terminal:
 #    1. Episode number
 #    2. Episode title
@@ -17,7 +17,7 @@
 # both automatically tagged with the appropriate metadata and artwork. It then
 # converts the Audacity chapter labels (using the CHAPPY script) into a WebVTT
 # file for chapter support on the website, as well as a specially formatted
-# CHAPTERS file for embedding in the M4A audio file. It then offers to upload 
+# CHAPTERS file for embedding in the M4A audio file. It then offers to upload
 # the files to AWS S3.
 #
 # Finally, it copies the WebVTT file into the appropriate directory for our
@@ -42,16 +42,22 @@ DATE=$(date +"%F %T %z")
 EP="episode-$EPNUM"
 MASTERFILE=$EP.wav
 LABELFILE=$EP.txt
-if [ ! -f "$MASTERFILE" ] || [ ! -f "$LABELFILE" ]; then
-    echo "FATAL: episode-$EPNUM.wav or episode-$EPNUM.txt not found."
+JPEGFILE=$EP.jpg
+if [ ! -f "$MASTERFILE" ] || [ ! -f "$LABELFILE" ] || [ ! -f "$JPEGFILE" ]; then
+    echo "FATAL: $MASTERFILE, $LABELFILE, or $JPEGFILE not found."
     exit
 fi
 
 OPUSFILE=$EP.opus
 M4AFILE=$EP.m4a
-M4ATEMPFILE=$EP-temp.m4a
-CHAPTERSFILE=$EP.chapters
+CHAPTERSFILE=$EP.chapters.txt
 VTTFILE=$EP.vtt
+
+POSTNAME=`echo "$(date +"%F")-$(echo $EPTITLE \
+        | sed -e 's/ /-/g' -e "s/[\!\@\#\\\$\%\^\&\*\(\)\',?]//g" \
+        | tr '[:upper:]' '[:lower:]')"`
+POSTFILE=$POSTNAME.md
+POSTJPEG=$POSTNAME.jpg
 
 echo "CREATING AUDIO FILES"
 echo "Converting to opus..."
@@ -68,15 +74,13 @@ opusenc --bitrate 64 \
         $MASTERFILE $OPUSFILE &>/dev/null && sync
 
 echo "Converting to aac..."
-ffmpeg -i $MASTERFILE \
-       -c:a aac -strict -2 \
-       -b:a 128k \
-       $M4ATEMPFILE &>/dev/null && sync 
+fdkaac -p 5 -b 64k \
+       -o $M4AFILE \
+       -S $MASTERFILE &>/dev/null && sync
 
 echo "Adding chapters..."
 chappy $LABELFILE
-MP4Box -add $M4ATEMPFILE -chap $CHAPTERSFILE $M4AFILE &>/dev/null && sync
-mp4chaps --convert --chapter-qt $M4AFILE &>/dev/null && sync
+mp4chaps --import --chapter-qt $M4AFILE &>/dev/null && sync
 
 echo "Writing tags..."
 mp4tags -a "$ARTIST" \
@@ -89,25 +93,27 @@ mp4tags -a "$ARTIST" \
         -B 1 \
         $M4AFILE &>/dev/null && sync
 mp4art --add $COVER $M4AFILE &>/dev/null && sync
-rm $M4ATEMPFILE
 rm $CHAPTERSFILE
+
+echo "Preparing social media image..."
+mv $JPEGFILE $POSTJPEG
 
 echo "Ready to upload? Check your files before you say yes!"
 select yn in "Yes" "No"; do
     case $yn in
-        Yes ) 
-            aws s3 cp $M4AFILE s3://lovey-dummies/$M4AFILE --acl public-read;
-            aws s3 cp $OPUSFILE s3://lovey-dummies/$OPUSFILE --acl public-read;
-            aws s3 cp $VTTFILE s3://lovey-dummies/$VTTFILE --acl public-read;
+        Yes )
+            aws s3 cp $M4AFILE s3://lovey-dummies/ --acl public-read;
+            aws s3 cp $OPUSFILE s3://lovey-dummies/ --acl public-read;
+            aws s3 cp $VTTFILE s3://lovey-dummies/ --acl public-read;
+            aws s3 cp $POSTJPEG s3://lovey-dummies/social/ --acl public-read;
             break;;
         No ) break;;
     esac
 done
 
 clear
-cd $LDDIR
 echo "Copying VTT file..."
-cp "$VTTFILE" "chapters/$VTTFILE"
+cp $VTTFILE $LDDIR/chapters/$VTTFILE
 
 echo "Preparing entry for website..."
 LENGTH=$(stat -c%s $M4AFILE)
@@ -116,17 +122,13 @@ TOTALSEC=`printf %.0f $(mp4info "$M4AFILE" \
         | cut -f3 \
         | cut -d ',' -f2 \
         | cut -d ' ' -f2)`
-MIN=$(bc <<< "$TOTALSEC / 60")
-SEC=$(bc <<< "$TOTALSEC % 60")
+MIN=`printf %02d $(bc <<< "$TOTALSEC / 60")`
+SEC=`printf %02d $(bc <<< "$TOTALSEC % 60")`
 DURATION="$MIN:$SEC"
 
-POSTFILE=`echo "$(date +"%F")-$(echo $EPTITLE \
-        | sed -e 's/ /-/g' -e "s/[\!\@\#\\\$\%\^\&\*\(\)\',?]//g" \
-        | tr '[:upper:]' '[:lower:]').md"`
-
-cd _posts/episode && > $POSTFILE
+cd $LDDIR/_posts/episode && > $POSTFILE
 echo "---" >> $POSTFILE
-echo "layout:    post" >> $POSTFILE
+echo "layout:    episode" >> $POSTFILE
 echo "title:    \"$EPTITLE\"" >> $POSTFILE
 echo "subtitle:  $INTERVIEWEES" >> $POSTFILE
 echo "date:      $DATE" >> $POSTFILE

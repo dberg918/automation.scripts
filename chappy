@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ ! -f "$1" ]; then echo -e "Gimme a real file, kthnx.\n"; exit; fi
 sh= ; sm= ; ss= ; eh= ; em= ; es= ;
-f=${1##*/}; CHAPTERS=${f:0:-4}.chapters; VTT=${f:0:-4}.vtt; VTTEMP=$VTT.tmp;
+f=${1##*/}; CHAPTERS=${f:0:-4}.chapters.txt; VTT=${f:0:-4}.vtt; VTTEMP=$VTT.tmp;
 echo "WEBVTT" > $VTT; > $CHAPTERS; > $VTTEMP; i=1;
 while IFS= read -r LINE; do
     start_seconds=`echo $LINE | cut -d ' ' -f 1 | rev | cut -c 4- | rev`
@@ -21,7 +21,7 @@ while IFS= read -r LINE; do
     es=`printf %06.3f $(bc <<< "$end_seconds % 60")`
     chapter_name=`echo $LINE | cut -d ' ' -f 3-`
     echo -e "\n$i\n$sh:$sm:$ss --> $eh:$em:$es\n$chapter_name" > $VTTEMP
-    echo -e "CHAPTER$i=$sh:$sm:$ss\nCHAPTER"$i"NAME=$chapter_name" >> $CHAPTERS
+    echo "$sh:$sm:$ss $chapter_name" >> $CHAPTERS
     ((i=$i+1))
 done < $1
 cat $VTTEMP >> $VTT
