@@ -53,9 +53,9 @@ M4AFILE=$EP.m4a
 CHAPTERSFILE=$EP.chapters.txt
 VTTFILE=$EP.vtt
 
-POSTNAME=`echo "$(date +"%F")-$(echo $EPTITLE \
+POSTNAME=$(echo "$(date +"%F")-$(echo "$EPTITLE" \
         | sed -e 's/ /-/g' -e "s/[\!\@\#\\\$\%\^\&\*\(\)\',?]//g" \
-        | tr '[:upper:]' '[:lower:]')"`
+        | tr '[:upper:]' '[:lower:]')")
 POSTFILE=$POSTNAME.md
 POSTJPEG=$POSTNAME.jpg
 
@@ -71,16 +71,16 @@ opusenc --bitrate 64 \
         --comment COPYRIGHT="$COPYRIGHT" \
         --comment CONTACT="$URL" \
         --picture "$COVER" \
-        $MASTERFILE $OPUSFILE &>/dev/null && sync
+        "$MASTERFILE" "$OPUSFILE" &>/dev/null && sync
 
 echo "Converting to aac..."
 fdkaac -p 5 -b 64k \
-       -o $M4AFILE \
-       -S $MASTERFILE &>/dev/null && sync
+       -o "$M4AFILE" \
+       -S "$MASTERFILE" &>/dev/null && sync
 
 echo "Adding chapters..."
-chappy $LABELFILE
-mp4chaps --import --chapter-qt $M4AFILE &>/dev/null && sync
+chappy "$LABELFILE"
+mp4chaps --import --chapter-qt "$M4AFILE" &>/dev/null && sync
 
 echo "Writing tags..."
 mp4tags -a "$ARTIST" \
@@ -91,21 +91,21 @@ mp4tags -a "$ARTIST" \
         -C "$COPYRIGHT" \
         -c "$URL" \
         -B 1 \
-        $M4AFILE &>/dev/null && sync
-mp4art --add $COVER $M4AFILE &>/dev/null && sync
-rm $CHAPTERSFILE
+        "$M4AFILE" &>/dev/null && sync
+mp4art --add "$COVER" "$M4AFILE" &>/dev/null && sync
+rm "$CHAPTERSFILE"
 
 echo "Preparing social media image..."
-mv $JPEGFILE $POSTJPEG
+mv "$JPEGFILE" "$POSTJPEG"
 
 echo "Ready to upload? Check your files before you say yes!"
 select yn in "Yes" "No"; do
     case $yn in
         Yes )
-            aws s3 cp $M4AFILE s3://lovey-dummies/ --acl public-read;
-            aws s3 cp $OPUSFILE s3://lovey-dummies/ --acl public-read;
-            aws s3 cp $VTTFILE s3://lovey-dummies/ --acl public-read;
-            aws s3 cp $POSTJPEG s3://lovey-dummies/social/ --acl public-read;
+            aws s3 cp "$M4AFILE" s3://lovey-dummies/ --acl public-read;
+            aws s3 cp "$OPUSFILE" s3://lovey-dummies/ --acl public-read;
+            aws s3 cp "$VTTFILE" s3://lovey-dummies/ --acl public-read;
+            aws s3 cp "$POSTJPEG" s3://lovey-dummies/social/ --acl public-read;
             break;;
         No ) break;;
     esac
@@ -113,34 +113,34 @@ done
 
 clear
 echo "Copying VTT file..."
-cp $VTTFILE $LDDIR/chapters/$VTTFILE
+cp "$VTTFILE" $LDDIR/chapters/"$VTTFILE"
 
 echo "Preparing entry for website..."
-LENGTH=$(stat -c%s $M4AFILE)
-TOTALSEC=`printf %.0f $(mp4info "$M4AFILE" \
+LENGTH=$(stat -c%s "$M4AFILE")
+TOTALSEC=$(printf %.0f "$(mp4info "$M4AFILE" \
         | grep audio \
         | cut -f3 \
         | cut -d ',' -f2 \
-        | cut -d ' ' -f2)`
-MIN=`printf %02d $(bc <<< "$TOTALSEC / 60")`
-SEC=`printf %02d $(bc <<< "$TOTALSEC % 60")`
+        | cut -d ' ' -f2)")
+MIN=$(printf %02d "$(bc <<< "$TOTALSEC / 60")")
+SEC=$(printf %02d "$(bc <<< "$TOTALSEC % 60")")
 DURATION="$MIN:$SEC"
 
-cd $LDDIR/_posts/episode && > $POSTFILE
-echo "---" >> $POSTFILE
-echo "layout:    episode" >> $POSTFILE
-echo "title:    \"$EPTITLE\"" >> $POSTFILE
-echo "subtitle:  $INTERVIEWEES" >> $POSTFILE
-echo "date:      $DATE" >> $POSTFILE
-echo "itunes:    $M4AFILE" >> $POSTFILE
-echo "opus:      $OPUSFILE" >> $POSTFILE
-echo "chapters:  $VTTFILE" >> $POSTFILE
-echo "length:    $LENGTH" >> $POSTFILE
-echo "duration: \"$DURATION\"" >> $POSTFILE
-echo -e "---\n\n" >> $POSTFILE
+cd $LDDIR/_posts/episode && true > "$POSTFILE"
+echo "---" >> "$POSTFILE"
+echo "layout:    episode" >> "$POSTFILE"
+echo "title:    \"$EPTITLE\"" >> "$POSTFILE"
+echo "subtitle:  $INTERVIEWEES" >> "$POSTFILE"
+echo "date:      $DATE" >> "$POSTFILE"
+echo "itunes:    $M4AFILE" >> "$POSTFILE"
+echo "opus:      $OPUSFILE" >> "$POSTFILE"
+echo "chapters:  $VTTFILE" >> "$POSTFILE"
+echo "length:    $LENGTH" >> "$POSTFILE"
+echo "duration: \"$DURATION\"" >> "$POSTFILE"
+echo -e "---\n\n" >> "$POSTFILE"
 
 read -p "Hit [ENTER] to type in the show notes"
-vim +13 $POSTFILE
+vim +13 "$POSTFILE"
 
 clear
 echo "Be sure to add, commit, and push the new show live!"

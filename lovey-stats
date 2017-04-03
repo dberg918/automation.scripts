@@ -9,7 +9,7 @@
 # on the Pi and you have free, current download statistics for your bucket!
 
 # Get stats for $DATE (default: yesterday)
-DATE=$(date --date="yesterday" +"%F")
+DATE="$(date --date="yesterday" +"%F")"
 if [ ! -z "$1" ]; then
     DATE="$1"
 fi
@@ -18,7 +18,7 @@ fi
 BUCKETNAME="lovey-dummies"
 
 # Point this to your designated log directory
-LOGDIR=$(pwd)
+LOGDIR="$(pwd)"
 
 # Set up various logfiles
 TMPLOG="$LOGDIR/tmp.log"
@@ -28,40 +28,47 @@ CMDLOG="$LOGDIR/command.log"
 # Set "LogFile" in your webalizer.conf to $ACCLOG
 ACCLOG="$LOGDIR/access.log"
 
-echo "-----------------------------------" >> $CMDLOG
-echo "LOVEY-STATS START: $(date)" >> $CMDLOG
-echo "Date set to $DATE" >> $CMDLOG
-echo "-----------------------------------" >> $CMDLOG 
-echo "Pulling logs from S3..." >> $CMDLOG
+{
+  echo "-----------------------------------"
+  echo "LOVEY-STATS START: $(date)"
+  echo "Date set to $DATE"
+  echo "-----------------------------------"
+  echo "Pulling logs from S3..."
+} >> "$CMDLOG"
 
 # Pull down logs from S3
-aws s3 cp s3://$BUCKETNAME/logs/ $LOGDIR/ \
-    --recursive --exclude "*" --include "$DATE*" >> $CMDLOG && sync
+aws s3 cp "s3://$BUCKETNAME/logs/" "$LOGDIR/" \
+    --recursive --exclude "*" --include "$DATE*" >> "$CMDLOG" && sync
 
-echo "--------" >> $CMDLOG
-echo "Aggregating and filtering S3 logs..." >> $CMDLOG
+{
+  echo "--------"
+  echo "Aggregating and filtering S3 logs..."
+} >> "$CMDLOG"
 
 # Aggregate S3 logs into one file, filter out unnecessary entries
-for i in $LOGDIR/*; do cat $i >> $TMPLOG; done && sync
-cat $TMPLOG | grep REST.GET.OBJECT \
-            | grep -v "user/David" \
-            | grep -v localhost \
-            | grep -v "S3Console" \
-            | grep -v "ld-cover.png" \
-            | grep -v "$BUCKETNAME/logs" \
-            > $PRSLOG && sync
+for i in $LOGDIR/*; do cat "$i" >> "$TMPLOG"; done && sync
+cat "$TMPLOG" | grep "REST.GET.OBJECT" \
+              | grep -v "user/David" \
+              | grep -v localhost \
+              | grep -v "S3Console" \
+              | grep -v "ld-cover.png" \
+              | grep -v "$BUCKETNAME/logs" \
+              | grep -v "$BUCKETNAME/social" \
+              > "$PRSLOG" && sync
 
-cat $PRSLOG >> $CMDLOG
+cat "$PRSLOG" >> "$CMDLOG"
 
 # If we're starting a new month, or we explicitly set the
 # date, rotate the log
-DTEST=$(echo "$DATE" | cut -d "-" -f 3)
+DTEST="$(echo "$DATE" | cut -d "-" -f 3)"
 if [ ! -z "$1" ] || [ "$DTEST" -lt 2 ]; then
-    > $ACCLOG
+    true > "$ACCLOG"
 fi
 
-echo "--------" >> $CMDLOG
-echo "Converting S3 Log Format into NCSA Combined Log Format..." >> $CMDLOG
+{
+  echo "--------" >> "$CMDLOG"
+  echo "Converting S3 Log Format into NCSA Combined Log Format..."
+} >> "$CMDLOG"
 
 # Turn S3 Server Access Log Format into NCSA CLF
 while IFS= read -r LINE; do
@@ -74,35 +81,43 @@ while IFS= read -r LINE; do
     referrer=$(echo "$LINE" | cut -d ' ' -f 19)
     user_agent=$(echo "$LINE" | cut -d '"' -f 6)
 
-    printf "%s " "$remote_ip" >> $ACCLOG
-    printf "%s " "$dash" >> $ACCLOG
-    printf "%s " "$dash" >> $ACCLOG
-    printf "%s " "$request_date" >> $ACCLOG
-    printf "%s " "$request_uri" >> $ACCLOG
-    printf "%s " "$http_status" >> $ACCLOG
-    printf "%s " "$bytes_sent" >> $ACCLOG
-    printf "%s " "$referrer" >> $ACCLOG
-    printf "%s\n" "\"$user_agent\"" >> $ACCLOG && sync
+    {
+      printf "%s " "$remote_ip"
+      printf "%s " "$dash"
+      printf "%s " "$dash"
+      printf "%s " "$request_date"
+      printf "%s " "$request_uri"
+      printf "%s " "$http_status"
+      printf "%s " "$bytes_sent"
+      printf "%s " "$referrer"
+      printf "%s\n" "\"$user_agent\""
+    } >> "$ACCLOG" && sync
 
-    printf "%s " "$remote_ip" >> $CMDLOG
-    printf "%s " "$dash" >> $CMDLOG
-    printf "%s " "$dash" >> $CMDLOG
-    printf "%s " "$request_date" >> $CMDLOG
-    printf "%s " "$request_uri" >> $CMDLOG
-    printf "%s " "$http_status" >> $CMDLOG
-    printf "%s " "$bytes_sent" >> $CMDLOG
-    printf "%s " "$referrer" >> $CMDLOG
-    printf "%s\n" "\"$user_agent\"" >> $CMDLOG && sync
-done < $PRSLOG
+    {
+      printf "%s " "$remote_ip"
+      printf "%s " "$dash"
+      printf "%s " "$dash"
+      printf "%s " "$request_date"
+      printf "%s " "$request_uri"
+      printf "%s " "$http_status"
+      printf "%s " "$bytes_sent"
+      printf "%s " "$referrer"
+      printf "%s\n" "\"$user_agent\""
+    } >> "$CMDLOG" && sync
+done < "$PRSLOG"
 
 # Remove unnecessary logfiles
-rm $TMPLOG $PRSLOG "$LOGDIR/$DATE"*
+rm "$TMPLOG" "$PRSLOG" "$LOGDIR/$DATE"*
 
-echo "--------" >> $CMDLOG
-echo "Running The Webalizer on new data..." >> $CMDLOG
+{
+  echo "--------"
+  echo "Running The Webalizer on new data..."
+} >> "$CMDLOG"
 
 # Run The Webalizer for generating stats
-webalizer >> $CMDLOG 2>&1
+webalizer >> "$CMDLOG" 2>&1
 
-echo "----------------" >> $CMDLOG
-echo "LOVEY-STATS FINISH: $(date)" >> $CMDLOG
+{
+  echo "----------------"
+  echo "LOVEY-STATS FINISH: $(date)"
+} >> "$CMDLOG"
