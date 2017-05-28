@@ -61,6 +61,7 @@ cat "$TMPLOG" | grep "REST.GET.OBJECT" \
               | grep -v "S3Console" \
               | grep -v "ld-cover.png" \
               | grep -v "$BUCKETNAME/logs" \
+              | grep -v "$BUCKETNAME/blog" \
               | grep -v "$BUCKETNAME/social" \
               > "$PRSLOG" && sync
 
