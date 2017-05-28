@@ -28,6 +28,14 @@ CMDLOG="$LOGDIR/command.log"
 # Set "LogFile" in your webalizer.conf to $ACCLOG
 ACCLOG="$LOGDIR/access.log"
 
+# If we're starting a new month, or we explicitly set the
+# date, rotate some logs
+DTEST="$(echo "$DATE" | cut -d "-" -f 3)"
+if [ ! -z "$1" ] || [ "$DTEST" -lt 2 ]; then
+    true > "$CMDLOG"
+    true > "$ACCLOG"
+fi
+
 {
   echo "-----------------------------------"
   echo "LOVEY-STATS START: $(date)"
@@ -57,13 +65,6 @@ cat "$TMPLOG" | grep "REST.GET.OBJECT" \
               > "$PRSLOG" && sync
 
 cat "$PRSLOG" >> "$CMDLOG"
-
-# If we're starting a new month, or we explicitly set the
-# date, rotate the log
-DTEST="$(echo "$DATE" | cut -d "-" -f 3)"
-if [ ! -z "$1" ] || [ "$DTEST" -lt 2 ]; then
-    true > "$ACCLOG"
-fi
 
 {
   echo "--------" >> "$CMDLOG"
