@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 ##### LOVEY-STATS
 # This script was coded to create download statistics from S3 bucket logs.
 # It pulls logfiles from a bucket, filters out unnecessary log entries, 
