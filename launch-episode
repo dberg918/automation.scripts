@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 #### LAUNCH-EPISODE
 # This script takes care of a number of post-production tasks required for
 # releasing a new episode of our podcast, Lovey Dummies. It reads in three
@@ -43,9 +43,23 @@ EP="episode-$EPNUM"
 MASTERFILE=$EP.wav
 LABELFILE=$EP.txt
 JPEGFILE=$EP.jpg
-if [ ! -f "$MASTERFILE" ] || [ ! -f "$LABELFILE" ] || [ ! -f "$JPEGFILE" ]; then
-    echo "FATAL: $MASTERFILE, $LABELFILE, or $JPEGFILE not found."
-    exit
+
+# Run tests to make sure we have everything
+if [ ! -f "$MASTERFILE" ];then
+    echo "FATAL: $MASTERFILE not found."
+    exit 1
+fi
+if [ ! -f "$LABELFILE" ]; then
+    echo "FATAL: $LABELFILE not found."
+    exit 1
+fi
+if [ ! -f "$JPEGFILE" ]; then
+    echo "FATAL: $JPEGFILE not found."
+    exit 1
+fi
+if [ ! -f "$COVER" ]; then
+    echo "FATAL: $COVER not found."
+    exit 1
 fi
 
 OPUSFILE=$EP.opus
@@ -71,16 +85,16 @@ opusenc --bitrate 64 \
         --comment COPYRIGHT="$COPYRIGHT" \
         --comment CONTACT="$URL" \
         --picture "$COVER" \
-        "$MASTERFILE" "$OPUSFILE" &>/dev/null && sync
+        "$MASTERFILE" "$OPUSFILE" && sync
 
 echo "Converting to aac..."
 fdkaac -p 5 -b 64k \
        -o "$M4AFILE" \
-       -S "$MASTERFILE" &>/dev/null && sync
+       -S "$MASTERFILE" && sync
 
 echo "Adding chapters..."
 chappy "$LABELFILE"
-mp4chaps --import --chapter-qt "$M4AFILE" &>/dev/null && sync
+mp4chaps --import --chapter-qt "$M4AFILE" && sync
 
 echo "Writing tags..."
 mp4tags -a "$ARTIST" \
@@ -91,8 +105,8 @@ mp4tags -a "$ARTIST" \
         -C "$COPYRIGHT" \
         -c "$URL" \
         -B 1 \
-        "$M4AFILE" &>/dev/null && sync
-mp4art --add "$COVER" "$M4AFILE" &>/dev/null && sync
+        "$M4AFILE" && sync
+mp4art --add "$COVER" "$M4AFILE" && sync
 rm "$CHAPTERSFILE"
 
 echo "Preparing social media image..."

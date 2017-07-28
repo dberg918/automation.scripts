@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 ##### LOVEY-STATS
 # This script was coded to create download statistics from S3 bucket logs.
 # It pulls logfiles from a bucket, filters out unnecessary log entries, 
@@ -28,6 +28,14 @@ CMDLOG="$LOGDIR/command.log"
 # Set "LogFile" in your webalizer.conf to $ACCLOG
 ACCLOG="$LOGDIR/access.log"
 
+# If we're starting a new month, or we explicitly set the
+# date, rotate some logs
+DTEST="$(echo "$DATE" | cut -d "-" -f 3)"
+if [ ! -z "$1" ] || [ "$DTEST" -lt 2 ]; then
+    true > "$CMDLOG"
+    true > "$ACCLOG"
+fi
+
 {
   echo "-----------------------------------"
   echo "LOVEY-STATS START: $(date)"
@@ -53,17 +61,11 @@ cat "$TMPLOG" | grep "REST.GET.OBJECT" \
               | grep -v "S3Console" \
               | grep -v "ld-cover.png" \
               | grep -v "$BUCKETNAME/logs" \
+              | grep -v "$BUCKETNAME/blog" \
               | grep -v "$BUCKETNAME/social" \
               > "$PRSLOG" && sync
 
 cat "$PRSLOG" >> "$CMDLOG"
-
-# If we're starting a new month, or we explicitly set the
-# date, rotate the log
-DTEST="$(echo "$DATE" | cut -d "-" -f 3)"
-if [ ! -z "$1" ] || [ "$DTEST" -lt 2 ]; then
-    true > "$ACCLOG"
-fi
 
 {
   echo "--------"
