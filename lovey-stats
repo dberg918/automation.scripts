@@ -54,7 +54,7 @@ aws s3 cp "s3://$BUCKETNAME/logs/" "$LOGDIR/" \
 } >> "$CMDLOG"
 
 # Aggregate S3 logs into one file, filter out unnecessary entries
-for i in $LOGDIR/*; do cat "$i" >> "$TMPLOG"; done && sync
+for i in "$LOGDIR/$DATE*"; do cat "$i" >> "$TMPLOG"; done && sync
 cat "$TMPLOG" | grep "REST.GET.OBJECT" \
               | grep -v "user/David" \
               | grep -v localhost \
